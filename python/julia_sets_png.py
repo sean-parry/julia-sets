@@ -1,9 +1,5 @@
-import numpy as np ,os, cv2
+import numpy as np , cv2
 
-'''
-this generates 'pgm' images so its just black and white i should add colour to the image and get it plotted with matplot lib and have sliders
-instead of inputting the values in main
-'''
 def generate_julia_set(c, width =1080, height=1080,re_min=-2.0,re_max=2.0,im_min=-2.0,im_max=2.0,file_name='output.png'):
     """
     generates a julia set
