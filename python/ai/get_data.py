@@ -1,4 +1,11 @@
 import numpy as np , matplotlib.pyplot as plt, pandas as pd, random, math
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+from sklearn.model_selection import train_test_split
+import numpy as np
+import matplotlib.pyplot as plt
 
 '''
 at this point why not just write an ai that tries to predict the output for each julia set because why not
@@ -27,7 +34,12 @@ def plot_data(df):
     plt.tight_layout()
     plt.show()
 
-def generate_data(input,width,height,max_iter):
+def _generate_data(input: tuple[float],
+                   width: int,
+                   height: int,
+                   max_iter:int
+                   ) -> list[float]:
+    
     re, im = input
     c = re+im*1j
     y, x = np.ogrid[1.4: -1.4: height*1j, -1.4: 1.4: width*1j]
@@ -53,28 +65,71 @@ def generate_data(input,width,height,max_iter):
 
     return(iter_until_diverge/100)
 
-def get(amount, width=128, height=128, max_iter=100):
+def _get(amount: int,
+         width: int = 128,
+         height: int = 128,
+         max_iter: int = 100,
+         verbose: bool = True
+         ) -> list[list[float]]:
+
     input, output = [], []
     for _ in range (amount):
         input.append([round(random.uniform(-0.999,.999),3) for _ in range (2)])
-        print(f'calculating julia set for {input[-1][0]} + {input[-1][1]}j')
-        output.append(generate_data(input[-1],width,height,max_iter))
+        if verbose:
+            print(f'calculating julia set for {input[-1][0]} + {input[-1][1]}j')
+        output.append(_generate_data(input[-1],width,height,max_iter))
 
     return input, output
 
 
-def save_data(amount, width=128, height=128, max_iter=100):
-    input, output = get(amount, width, height, max_iter)
+def save_data(amount: int,
+              width: int = 128,
+              height: int = 128, 
+              max_iter: int = 100
+              ) -> None:
+    
+    input, output = _get(amount, width, height, max_iter)
     np.save('data_x.npy',input)
     np.save('data_y.npy',output)
 
+def load_data(batch_size: int=8
+              ) -> tuple[DataLoader, DataLoader]:
+    
+    data_x, data_y = np.load('data_x.npy'), np.load('data_y.npy')
 
+    inputs = torch.tensor(data_x, dtype=torch.float32)
+    outputs = torch.tensor(data_y, dtype=torch.float32)
+
+    # Split data into training and validation sets
+    X_train, X_test, y_train, y_test = train_test_split(inputs, outputs, test_size=0.2, random_state=42)
+
+    # Create DataLoader
+    train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
+    test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=batch_size)
+    return train_loader, test_loader
+
+def get_data_loaders(amount: int,
+                     width: int = 128,
+                     height: int = 128,
+                     batch_size: int = 8
+                     ) -> tuple[DataLoader, DataLoader]:
+    
+    data_x, data_y = _get(amount,width,height)
+
+    inputs = torch.tensor(data_x, dtype=torch.float32)
+    outputs = torch.tensor(data_y, dtype=torch.float32)
+
+    X_train, X_test, y_train, y_test = train_test_split(inputs, outputs, test_size=0.2, random_state=42)
+
+    # Create DataLoader
+    train_loader = DataLoader(TensorDataset(X_train, y_train), batch_size=batch_size, shuffle=True)
+    # can change below shuffle to true to verify that dif batches are being used in training (they are don't worry)
+    test_loader = DataLoader(TensorDataset(X_test, y_test), batch_size=batch_size, shuffle=False) 
+    return train_loader, test_loader
 
 def main():
-    get(64)
+    get_data_loaders(10)
     return
-    df_from_pkl = pd.read_pickle('data.pkl')
-    plot_data(df_from_pkl)
 
 if __name__ == '__main__':
     main()
